@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型&PDF展示页面</title>
+    <!-- 引入3D模型加载库（CDN方式，无需本地下载） -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- PDF阅读器（CDN方式） -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- 简单样式，适配手机/电脑 -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .title { text-align: center; margin-bottom: 20px; color: #333; }
+        .info { margin-bottom: 20px; padding: 15px; background: #f0f8ff; border-radius: 6px; }
+        .model-container { width: 100%; height: 500px; margin-bottom: 20px; border: 1px solid #eee; border-radius: 6px; }
+        .pdf-container { width: 100%; height: 600px; border: 1px solid #eee; border-radius: 6px; }
+        .pdf-download { margin: 10px 0; text-align: right; }
+        .pdf-download a { color: #165DFF; text-decoration: none; }
+        /* 适配手机 */
+        @media (max-width: 768px) {
+            .model-container { height: 300px; }
+            .pdf-container { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 标题（可修改） -->
+        <h1 class="title">工程数字样板展示</h1>
+        
+        <!-- 文字信息区（替换成你的模型信息） -->
+        <div class="info">
+            <h3>模型基本信息</h3>
+            <p>模型名称：【替换成你的模型名称，比如B1区钢柱环梁】</p>
+            <p>模型说明：【替换成模型相关描述，比如创优数字样板、施工工艺说明】</p>
+            <p>其他信息：【替换成负责人、施工班组等信息】</p>
+        </div>
+
+        <!-- 3D模型展示区（已适配你的aaaa.glb文件） -->
+        <div class="model-container" id="modelView"></div>
+
+        <!-- PDF展示区（需替换你的PDF文件名） -->
+        <div class="pdf-download">
+            <a href="你的PDF文件名.pdf" download>下载PDF文件</a>
+        </div>
+        <div class="pdf-container" id="pdfView"></div>
+    </div>
+
+    <script>
+        // 1. 加载3D模型（已指向你的aaaa.glb）
+        function initModel() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, document.getElementById('modelView').clientWidth / document.getElementById('modelView').clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(document.getElementById('modelView').clientWidth, document.getElementById('modelView').clientHeight);
+            document.getElementById('modelView').appendChild(renderer.domElement);
+
+            // 控制器（可鼠标拖拽旋转、滚轮缩放模型）
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // 光源（让模型显示更清晰）
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            // 加载你的aaaa.glb模型
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'aaaa.glb', // 你的模型文件名，无需修改
+                function (gltf) {
+                    scene.add(gltf.scene);
+                    // 自动居中模型
+                    const box = new THREE.Box3().setFromObject(gltf.scene);
+                    const center = box.getCenter(new THREE.Vector3());
+                    gltf.scene.position.sub(center);
+                },
+                (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% 模型加载完成'); },
+                (error) => { console.error('模型加载失败：', error); alert('模型加载失败，请检查文件名是否正确！'); }
+            );
+
+            camera.position.z = 5;
+
+            // 动画循环（让模型可交互）
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // 窗口自适应（调整页面大小时模型区同步变化）
+            window.addEventListener('resize', () => {
+                camera.aspect = document.getElementById('modelView').clientWidth / document.getElementById('modelView').clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(document.getElementById('modelView').clientWidth, document.getElementById('modelView').clientHeight);
+            });
+        }
+
+        // 2. 加载PDF文件（Index.pdf）
+        function initPDF() {
+            const pdfjsLib = window['pdfjs-dist/build/pdf'];
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+            const pdfContainer = document.getElementById('pdfView');
+            // 加载你的PDF文件
+            pdfjsLib.getDocument('你的PDF文件名.pdf').promise.then((pdf) => {
+                // 渲染第一页
+                pdf.getPage(1).then((page) => {
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    pdfContainer.appendChild(canvas);
+
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    page.render(renderContext);
+
+                    // 显示页码
+                    const pageNum = document.createElement('div');
+                    pageNum.style.position = 'absolute';
+                    pageNum.style.bottom = '10px';
+                    pageNum.style.right = '10px';
+                    pageNum.style.color = '#666';
+                    pageNum.innerText = `第1页 / 共${pdf.numPages}页`;
+                    pdfContainer.appendChild(pageNum);
+                });
+            }).catch((error) => {
+                console.error('PDF加载失败：', error);
+                pdfContainer.innerHTML = '<div style="text-align:center; padding:20px; color:red;">PDF加载失败，请检查文件名！</div>';
+            });
+        }
+
+        // 页面加载完成后初始化模型和PDF
+        window.onload = function() {
+            initModel();
+            initPDF();
+        };
+    </script>
+</body>
+</html>
