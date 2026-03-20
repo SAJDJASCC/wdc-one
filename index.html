@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>工程数字样板展示</title>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- 改用 ES Modules 方式引入 Three.js 和 OrbitControls -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,9 +35,9 @@
         <h1 class="title">工程数字样板展示</h1>
         <div class="info">
             <h3>模型基本信息</h3>
-            <p>模型名称：【B1区钢柱环梁】</p>
-            <p>模型说明：【创优数字样板、施工工艺说明】</p>
-            <p>其他信息：【施工班组等信息】</p>
+            <p>模型名称：B1区钢柱环梁</p>
+            <p>模型说明：创优数字样板、施工工艺说明</p>
+            <p>其他信息：施工班组等信息</p>
         </div>
         <div class="model-container" id="modelView"></div>
         <div class="pdf-download">
@@ -40,21 +46,29 @@
         <div class="pdf-container" id="pdfView"></div>
     </div>
 
-    <script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
         function initModel() {
             const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, document.getElementById('modelView').clientWidth / document.getElementById('modelView').clientHeight, 0.1, 1000);
+            const container = document.getElementById('modelView');
+            const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(document.getElementById('modelView').clientWidth, document.getElementById('modelView').clientHeight);
-            document.getElementById('modelView').appendChild(renderer.domElement);
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
+
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
             directionalLight.position.set(5, 5, 5);
             scene.add(directionalLight);
-            const loader = new THREE.GLTFLoader();
+
+            const loader = new GLTFLoader();
             loader.load(
                 'aaaa.glb',
                 function (gltf) {
@@ -66,17 +80,20 @@
                 (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% 模型加载完成'); },
                 (error) => { console.error('模型加载失败：', error); alert('模型加载失败，请检查文件！'); }
             );
+
             camera.position.z = 5;
+
             function animate() {
                 requestAnimationFrame(animate);
                 controls.update();
                 renderer.render(scene, camera);
             }
             animate();
+
             window.addEventListener('resize', () => {
-                camera.aspect = document.getElementById('modelView').clientWidth / document.getElementById('modelView').clientHeight;
+                camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(document.getElementById('modelView').clientWidth, document.getElementById('modelView').clientHeight);
+                renderer.setSize(container.clientWidth, container.clientHeight);
             });
         }
 
